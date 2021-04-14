@@ -6,6 +6,7 @@ import { TranscriptionLine } from '@plugins/drawingTools/components'
 import { Tooltip } from '@zooniverse/react-components'
 import ConsensusPopup from './components/ConsensusPopup'
 import TooltipLabel from './components/TooltipLabel'
+import TranscribedLine from './components/TranscribedLine'
 import en from './locales/en'
 
 counterpart.registerTranslations('en', en)
@@ -16,8 +17,6 @@ export const ConsensusLine = styled('g')`
   &:focus {
     ${props => css`outline: solid 4px ${props.focusColor};`}
   }
-
-  ${props => css`opacity: ${props['aria-disabled'] === 'true' ? 0.3 : 1};`}
 `
 
 class TranscribedLines extends React.Component {
@@ -33,36 +32,8 @@ class TranscribedLines extends React.Component {
       show: false
     }
 
-    this.createMark = this.createMark.bind(this)
     this.close = this.close.bind(this)
     this.showConsensus = this.showConsensus.bind(this)
-  }
-
-  createMark (line) {
-    const { activeTool, activeToolIndex, marks, setActiveMark } = this.props.task
-
-    if (activeTool) {
-      const [ existingMark ] = marks.filter(mark => mark.id === line.id)
-      const [{ x: x1, y: y1 }, { x: x2, y: y2 }] = line.points
-      const { id } = line
-      const toolIndex = activeToolIndex
-      const markSnapshot = { id, x1, y1, x2, y2, toolIndex }
-      const mark = existingMark ? existingMark : activeTool.createMark(markSnapshot)
-      setActiveMark(mark)
-
-      let previousAnnotationValuesForEachMark = []
-      activeTool.tasks.forEach((task) => {
-        const previousAnnotationValuesForThisMark = {
-          id: mark.id,
-          taskKey: task.taskKey,
-          taskType: task.type,
-          values: line.textOptions
-        }
-        previousAnnotationValuesForEachMark.push(previousAnnotationValuesForThisMark)
-      })
-      mark.setPreviousAnnotations(previousAnnotationValuesForEachMark)
-      mark.finish()
-    }
   }
 
   showConsensus (line, ref) {
@@ -104,7 +75,6 @@ class TranscribedLines extends React.Component {
     const transcribedLines = lines.filter(line => !line.consensusReached)
 
     const fills = {
-      transcribed: 'drawing-pink',
       complete: 'light-5'
     }
 
@@ -147,47 +117,24 @@ class TranscribedLines extends React.Component {
         }
         {transcribedLines
           .map((line, index) => {
-            const [ existingMark ] = marks.filter(mark => mark.id === line.id)
             let disabled = invalidTask
+            // const [ existingMark ] = marks.filter(mark => mark.id === line.id)
             // Uncomment this to disable prevous lines if they have a transcription line
             // disabled = disabled || !!existingMark
             // Uncomment this to remove previous lines if they have a transcription line.
             // if (existingMark) {
             //   return null
             // }
-            const [{ x: x1, y: y1 }, { x: x2, y: y2 }] = line.points
-            const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
-            const mark = { length, x1, y1, x2, y2 }
-            const id = `transcribed-${index}`
-
-            const lineProps = {}
-            if (!disabled) {
-              lineProps.onClick = event => this.createMark(line)
-              lineProps.onKeyDown = event => this.onKeyDown(event, this.createMark, line)
-            }
-
             return (
-              <Tooltip
-                id={id}
+              <TranscribedLine
+                id={`transcribed-${index}`}
                 key={line.id}
-                label={<TooltipLabel fill={fills.transcribed} label={counterpart('TranscribedLines.transcribed')} />}
-              >
-                <ConsensusLine
-                  role='button'
-                  aria-describedby={id}
-                  aria-disabled={disabled.toString()}
-                  aria-label={line.consensusText}
-                  focusColor={focusColor}
-                  tabIndex={disabled ? -1 : 0}
-                  {...lineProps}
-                >
-                  <TranscriptionLine
-                    state='transcribed'
-                    mark={mark}
-                    scale={scale}
-                  />
-                </ConsensusLine>
-              </Tooltip>
+                disabled={disabled}
+                line={line}
+                scale={scale}
+                task={task}
+                theme={theme}
+              />
             )
           })
         }

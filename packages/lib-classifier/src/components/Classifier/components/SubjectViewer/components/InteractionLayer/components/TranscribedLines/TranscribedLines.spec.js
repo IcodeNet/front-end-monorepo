@@ -8,6 +8,7 @@ import { ConsensusLine, TranscribedLines } from './TranscribedLines'
 import { reducedSubject } from '@store/TranscriptionReductions/mocks'
 import { TranscriptionLine } from '@plugins/drawingTools/components'
 import ConsensusPopup from './components/ConsensusPopup'
+import TranscribedLine from './components/TranscribedLine'
 import zooTheme from '@zooniverse/grommet-theme'
 
 describe('Component > TranscribedLines', function () {
@@ -47,25 +48,9 @@ describe('Component > TranscribedLines', function () {
     })
 
     it('should disable the incomplete lines', function () {
-      const transcribedLines = wrapper.find(TranscriptionLine).find({ state: 'transcribed' })
+      const transcribedLines = wrapper.find(TranscribedLine)
       transcribedLines.forEach((line) => {
-        const consensusLineWrapper = line.parent()
-        expect(consensusLineWrapper.props()['aria-disabled']).to.equal('true')
-      })
-    })
-
-    it('should not create a mark', function () {
-      const spaceEventMock = { key: ' ', preventDefault: sinon.spy() }
-      const enterEventMock = { key: 'Enter', preventDefault: sinon.spy() }
-      const transcribedLines = wrapper.find(TranscriptionLine).find({ state: 'transcribed' })
-      transcribedLines.forEach((line, index) => {
-        expect(task.activeMark).to.be.undefined()
-        wrapper.find({ 'aria-describedby': `transcribed-${index}` }).simulate('click')
-        expect(task.activeMark).to.be.undefined()
-        wrapper.find({ 'aria-describedby': `transcribed-${index}` }).simulate('keydown', spaceEventMock)
-        expect(task.activeMark).to.be.undefined()
-        wrapper.find({ 'aria-describedby': `transcribed-${index}` }).simulate('keydown', enterEventMock)
-        expect(task.activeMark).to.be.undefined()
+        expect(line.props().disabled).to.be.true()
       })
     })
 
@@ -83,7 +68,6 @@ describe('Component > TranscribedLines', function () {
 
     before(function () {
       sinon.spy(React, 'createRef')
-      createMarkSpy = sinon.spy(TranscribedLines.prototype, 'createMark')
       showConsensusStub = sinon.stub(TranscribedLines.prototype, 'showConsensus')
       wrapper = mount(
         <svg>
@@ -114,7 +98,6 @@ describe('Component > TranscribedLines', function () {
     after(function () {
       task.setActiveMark(undefined)
       React.createRef.restore()
-      createMarkSpy.restore()
       showConsensusStub.restore()
     })
 
@@ -199,19 +182,15 @@ describe('Component > TranscribedLines', function () {
         getBoundingClientRect: sinon.spy()
       }
     }
-    let lines, refStub
+    let lines
+
     before(function () {
-      refStub = sinon.stub(React, 'createRef').callsFake(() => { return currentMock })
       wrapper = shallow(<TranscribedLines lines={consensusLines} task={task} />)
-      lines = wrapper.find(TranscriptionLine).find({ state: 'transcribed' })
+      lines = wrapper.find(TranscribedLine)
     })
 
     afterEach(function () {
       currentMock.current.blur.resetHistory()
-    })
-
-    after(function () {
-      refStub.restore()
     })
 
     it('should render', function () {
@@ -220,64 +199,8 @@ describe('Component > TranscribedLines', function () {
     })
 
     it('should not be disabled', function () {
-      lines.forEach((component) => {
-        const consensusLineWrapper = component.parent()
-        expect(consensusLineWrapper.props()['aria-disabled']).to.equal('false')
-      })
-    })
-
-    it('should be focusable', function () {
-      lines.forEach((component) => {
-        const consensusLineWrapper = component.parent()
-        expect(consensusLineWrapper.props().tabIndex).to.equal(0)
-      })
-    })
-
-    it('should create a new mark on click', function () {
-      const transcribedLines = consensusLines.filter(line => !line.consensusReached)
-      lines.forEach((line, index) => {
-        expect(task.activeMark).to.be.undefined()
-        wrapper.find({ 'aria-describedby': `transcribed-${index}` }).simulate('click')
-        expect(task.activeMark.x1).to.equal(transcribedLines[index].points[0].x)
-        expect(task.activeMark.y1).to.equal(transcribedLines[index].points[0].y)
-        expect(task.activeMark.x2).to.equal(transcribedLines[index].points[1].x)
-        expect(task.activeMark.y2).to.equal(transcribedLines[index].points[1].y)
-        task.setActiveMark(undefined)
-      })
-    })
-
-    it('should create a new mark on keydown with enter', function () {
-      const eventMock = { key: 'Enter', preventDefault: sinon.spy() }
-      const transcribedLines = consensusLines.filter(line => !line.consensusReached)
-      lines.forEach((line, index) => {
-        expect(task.activeMark).to.be.undefined()
-        wrapper.find({ 'aria-describedby': `transcribed-${index}` }).simulate('keydown', eventMock)
-        expect(task.activeMark.x1).to.equal(transcribedLines[index].points[0].x)
-        expect(task.activeMark.y1).to.equal(transcribedLines[index].points[0].y)
-        expect(task.activeMark.x2).to.equal(transcribedLines[index].points[1].x)
-        expect(task.activeMark.y2).to.equal(transcribedLines[index].points[1].y)
-        task.setActiveMark(undefined)
-      })
-    })
-
-    it('should create a new mark on keydown with space', function () {
-      const eventMock = { key: ' ', preventDefault: sinon.spy() }
-      const transcribedLines = consensusLines.filter(line => !line.consensusReached)
-      lines.forEach((line, index) => {
-        expect(task.activeMark).to.be.undefined()
-        wrapper.find({ 'aria-describedby': `transcribed-${index}` }).simulate('keydown', eventMock)
-        expect(task.activeMark.x1).to.equal(transcribedLines[index].points[0].x)
-        expect(task.activeMark.y1).to.equal(transcribedLines[index].points[0].y)
-        expect(task.activeMark.x2).to.equal(transcribedLines[index].points[1].x)
-        expect(task.activeMark.y2).to.equal(transcribedLines[index].points[1].y)
-        task.setActiveMark(undefined)
-      })
-    })
-
-    it('should have an explanatory tooltip', function () {
-      lines.forEach((component, index) => {
-        const tooltip = wrapper.find({ id: `transcribed-${index}` })
-        expect(tooltip).to.have.lengthOf(1)
+      lines.forEach(line => {
+        expect(line.props().disabled).to.be.false()
       })
     })
   })
